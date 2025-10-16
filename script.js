@@ -12,7 +12,8 @@ const BASE_API_URL = (function() {
     return null; // This will trigger demo data
   }
   
-  return '/api'; // Local development
+  // Local development - point to your backend server
+  return 'http://localhost:3001/api'; // Updated to full backend URL
 })();
 
 // Embed mode
@@ -86,6 +87,14 @@ function initializeTheme() {
 async function refreshPlayers() {
   try {
     showLoading(true);
+    
+    // If no API URL (demo mode), use demo data
+    if (!BASE_API_URL) {
+      loadDemoData();
+      showLoading(false);
+      return;
+    }
+    
     const res = await fetch(`${BASE_API_URL}/players`);
     
     if (!res.ok) {
@@ -129,7 +138,8 @@ async function refreshPlayers() {
     errorCount++;
     
     if (errorCount >= MAX_ERROR_COUNT) {
-      setError('Unable to connect to server.');
+      setError('Unable to connect to server. Using demo data.');
+      loadDemoData();
     } else {
       setError(`Connection issue (${errorCount}/${MAX_ERROR_COUNT}). Retrying on next action...`);
     }
@@ -516,8 +526,8 @@ async function addAssists() {
     return;
   }
 
-  // If API is down, update locally with animation
-  if (errorCount >= MAX_ERROR_COUNT) {
+  // If API is down or in demo mode, update locally with animation
+  if (!BASE_API_URL || errorCount >= MAX_ERROR_COUNT) {
     braden.assists += assistsToAdd;
     players.sort((a, b) => b.assists - a.assists);
     renderPlayerMarkers();
@@ -558,6 +568,7 @@ async function addAssists() {
   } catch (e) {
     console.error('Add assists failed:', e);
     showError('Failed to add assists. Please try again.');
+    errorCount++;
   } finally {
     isMutating = false;
     showLoading(false);
@@ -586,8 +597,8 @@ async function reduceAssists() {
     return;
   }
 
-  // If API is down, update locally with animation
-  if (errorCount >= MAX_ERROR_COUNT) {
+  // If API is down or in demo mode, update locally with animation
+  if (!BASE_API_URL || errorCount >= MAX_ERROR_COUNT) {
     braden.assists -= assistsToRemove;
     players.sort((a, b) => b.assists - a.assists);
     renderPlayerMarkers();
@@ -630,6 +641,7 @@ async function reduceAssists() {
   } catch (e) {
     console.error('Reduce assists failed:', e);
     showError(e.message || 'Failed to reduce assists. Please try again.');
+    errorCount++;
   } finally {
     isMutating = false;
     showLoading(false);
