@@ -34,12 +34,23 @@ const MAX_ERROR_COUNT = 3;
 // Track current state for change detection
 let lastKnownState = null;
 
+// Debug info
+console.log('🔄 Script loaded on:', window.location.hostname);
+console.log('🔗 BASE_API_URL:', BASE_API_URL);
+console.log('🌐 Vercel detected:', window.location.hostname.includes('vercel.app'));
+
 // Initialize the widget
 document.addEventListener('DOMContentLoaded', function() {
   bootstrapUI();
 });
 
 async function bootstrapUI() {
+  // Force demo data on Vercel - ADD THIS FIX
+  if (window.location.hostname.includes('vercel.app')) {
+    console.log('Vercel detected - forcing demo mode');
+    loadDemoData();
+  }
+  
   if (EMBED_MODE) {
     document.documentElement.classList.add('embed');
   }
@@ -88,8 +99,9 @@ async function refreshPlayers() {
   try {
     showLoading(true);
     
-    // If no API URL (demo mode), use demo data
-    if (!BASE_API_URL) {
+    // If no API URL (demo mode), use demo data immediately
+    if (!BASE_API_URL || window.location.hostname.includes('vercel.app')) {
+      console.log('Running in demo mode');
       loadDemoData();
       showLoading(false);
       return;
@@ -161,6 +173,7 @@ async function forceRefreshPlayers() {
 
 // Load demo data when API is unavailable
 function loadDemoData() {
+  console.log('📊 Loading demo data...');
   players = [
     { id: 1, name: "Bobby Hurley", assists: 1076, team: "Duke", color: "#001A57", isBraden: false },
     { id: 2, name: "Chris Corchiani", assists: 1038, team: "NC State", color: "#CC0000", isBraden: false },
@@ -175,6 +188,7 @@ function loadDemoData() {
     { id: 11, name: "Braden Smith", assists: 758, team: "Purdue", color: "#CEB888", isBraden: true }
   ].sort((a, b) => b.assists - a.assists);
 
+  console.log('✅ Demo data loaded, player count:', players.length);
   renderPlayerMarkers();
   renderLeaderboard();
   updateProgressBar();
@@ -246,6 +260,12 @@ function showError(message) {
 function renderPlayerMarkers() {
   const court = document.querySelector('.court-background');
   const timeline = document.querySelector('.timeline');
+  
+  if (!court || !timeline) {
+    console.error('Court or timeline element not found');
+    return;
+  }
+  
   const timelineWidth = timeline.offsetWidth;
   const timelineLeft = timeline.offsetLeft;
   
@@ -255,7 +275,10 @@ function renderPlayerMarkers() {
   
   // Find Braden Smith
   const braden = players.find(player => player.isBraden);
-  if (!braden) return;
+  if (!braden) {
+    console.error('Braden Smith not found in players');
+    return;
+  }
   
   const maxAssists = players[0].assists;
   const minAssists = braden.assists;
@@ -296,7 +319,10 @@ function renderPlayerMarkers() {
 // Enhanced renderLeaderboard with staggered animations and dark mode support
 function renderLeaderboard() {
   const leaderboard = document.getElementById('leaderboard');
-  if (!leaderboard) return;
+  if (!leaderboard) {
+    console.error('Leaderboard element not found');
+    return;
+  }
   
   leaderboard.innerHTML = '';
   
@@ -340,7 +366,10 @@ function renderLeaderboard() {
 // Enhanced updateProgressBar with smooth counting
 function updateProgressBar() {
   const braden = players.find(player => player.isBraden);
-  if (!braden) return;
+  if (!braden) {
+    console.error('Braden Smith not found for progress bar');
+    return;
+  }
   
   const recordAssists = players[0].assists;
   const progressPercentage = Math.min((braden.assists / recordAssists) * 100, 100);
@@ -422,10 +451,12 @@ function animateAssistAddition(assistsAdded) {
   const card = document.getElementById('bradenCard');
   
   // Pulse animation
-  card.classList.add('assist-added');
-  setTimeout(() => {
-    card.classList.remove('assist-added');
-  }, 600);
+  if (card) {
+    card.classList.add('assist-added');
+    setTimeout(() => {
+      card.classList.remove('assist-added');
+    }, 600);
+  }
   
   // Show success message
   showSuccessMessage(`+${assistsAdded} assists added!`);
@@ -437,10 +468,12 @@ function animateAssistRemoval(assistsRemoved) {
   const card = document.getElementById('bradenCard');
   
   // Shake animation
-  card.classList.add('assist-removed');
-  setTimeout(() => {
-    card.classList.remove('assist-removed');
-  }, 600);
+  if (card) {
+    card.classList.add('assist-removed');
+    setTimeout(() => {
+      card.classList.remove('assist-removed');
+    }, 600);
+  }
   
   // Show danger message
   showDangerMessage(`-${assistsRemoved} assists removed!`);
@@ -463,7 +496,9 @@ function showSuccessMessage(message) {
   `;
   
   const errorBanner = document.getElementById('errorBanner');
-  errorBanner.parentNode.insertBefore(banner, errorBanner.nextSibling);
+  if (errorBanner) {
+    errorBanner.parentNode.insertBefore(banner, errorBanner.nextSibling);
+  }
   
   setTimeout(() => {
     if (banner.parentNode) {
@@ -495,7 +530,9 @@ function showDangerMessage(message) {
   `;
   
   const errorBanner = document.getElementById('errorBanner');
-  errorBanner.parentNode.insertBefore(banner, errorBanner.nextSibling);
+  if (errorBanner) {
+    errorBanner.parentNode.insertBefore(banner, errorBanner.nextSibling);
+  }
   
   setTimeout(() => {
     if (banner.parentNode) {
@@ -513,6 +550,11 @@ function showDangerMessage(message) {
 // Enhanced addAssists function with animations
 async function addAssists() {
   const input = document.getElementById('assistInput');
+  if (!input) {
+    showError('Input field not found');
+    return;
+  }
+  
   const assistsToAdd = parseInt(input.value);
   
   if (isNaN(assistsToAdd) || assistsToAdd < 1) {
@@ -520,14 +562,21 @@ async function addAssists() {
     return;
   }
 
-  const braden = players.find(player => player.isBraden);
-  if (!braden) {
-    showError('Braden Smith not found');
-    return;
-  }
-
-  // If API is down or in demo mode, update locally with animation
-  if (!BASE_API_URL || errorCount >= MAX_ERROR_COUNT) {
+  // Always allow demo mode operation on Vercel
+  if (!BASE_API_URL || window.location.hostname.includes('vercel.app') || errorCount >= MAX_ERROR_COUNT) {
+    let braden = players.find(player => player.isBraden);
+    
+    // If Braden not found, load demo data first
+    if (!braden) {
+      console.log('Braden not found, loading demo data...');
+      loadDemoData();
+      // Try again after loading demo data
+      setTimeout(() => {
+        addAssists();
+      }, 100);
+      return;
+    }
+    
     braden.assists += assistsToAdd;
     players.sort((a, b) => b.assists - a.assists);
     renderPlayerMarkers();
@@ -578,6 +627,11 @@ async function addAssists() {
 // Updated reduceAssists function
 async function reduceAssists() {
   const input = document.getElementById('assistInput');
+  if (!input) {
+    showError('Input field not found');
+    return;
+  }
+  
   const assistsToRemove = parseInt(input.value);
   
   if (isNaN(assistsToRemove) || assistsToRemove < 1) {
@@ -585,20 +639,27 @@ async function reduceAssists() {
     return;
   }
 
-  const braden = players.find(player => player.isBraden);
-  if (!braden) {
-    showError('Braden Smith not found');
-    return;
-  }
+  // Always allow demo mode operation on Vercel
+  if (!BASE_API_URL || window.location.hostname.includes('vercel.app') || errorCount >= MAX_ERROR_COUNT) {
+    let braden = players.find(player => player.isBraden);
+    
+    // If Braden not found, load demo data first
+    if (!braden) {
+      console.log('Braden not found, loading demo data...');
+      loadDemoData();
+      // Try again after loading demo data
+      setTimeout(() => {
+        reduceAssists();
+      }, 100);
+      return;
+    }
 
-  // Prevent negative assists (client-side validation)
-  if (braden.assists - assistsToRemove < 0) {
-    showError(`Cannot remove ${assistsToRemove} assists. Braden only has ${braden.assists} assists.`);
-    return;
-  }
+    // Prevent negative assists (client-side validation)
+    if (braden.assists - assistsToRemove < 0) {
+      showError(`Cannot remove ${assistsToRemove} assists. Braden only has ${braden.assists} assists.`);
+      return;
+    }
 
-  // If API is down or in demo mode, update locally with animation
-  if (!BASE_API_URL || errorCount >= MAX_ERROR_COUNT) {
     braden.assists -= assistsToRemove;
     players.sort((a, b) => b.assists - a.assists);
     renderPlayerMarkers();
