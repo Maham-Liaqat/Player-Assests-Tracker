@@ -24,7 +24,8 @@ const EMBED_MODE = (function() {
 
 // In-memory state
 let players = [];
-let lastAssistLogId = null; // for undo
+let lastAssistLogId = null; // for server-side undo
+let lastLocalChange = null; // for client-side undo in demo mode
 let isMutating = false; // pause operations during mutations
 let hasShownError = false;
 let isLoading = true;
@@ -88,7 +89,8 @@ async function bootstrapUI() {
    const copyBtn = document.getElementById('copyEmbed');
    if (copyBtn) {
      copyBtn.addEventListener('click', () => {
-       const code = '<iframe src="https://your-domain.example/index.html?embed=1" width="100%" height="420" style="border:0;border-radius:12px;"></iframe>';
+      const origin = window.location.origin || '';
+      const code = `<iframe src="${origin}/index.html?embed=1" width="100%" height="420" style="border:0;border-radius:12px;"></iframe>`;
        navigator.clipboard.writeText(code).then(() => showSuccessMessage('Embed code copied!'));
      });
    }
@@ -633,6 +635,10 @@ async function addAssists() {
     renderLeaderboard();
     updateProgressBar();
     animateAssistAddition(assistsToAdd);
+    // enable client-side undo in demo mode
+    lastLocalChange = { type: 'add', amount: assistsToAdd };
+    const undoBtn = document.getElementById('undoButton');
+    if (undoBtn) undoBtn.disabled = false;
     input.value = '';
     return;
   }
@@ -643,7 +649,7 @@ async function addAssists() {
 
     const braden = players.find(p => p.isBraden);
     if (!braden) throw new Error('Braden Smith not found');
-    
+
     const res = await fetch(`${BASE_API_URL}/players/${braden.id}/add-assists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -720,6 +726,10 @@ async function reduceAssists() {
     renderLeaderboard();
     updateProgressBar();
     animateAssistRemoval(assistsToRemove);
+     // enable client-side undo in demo mode
+     lastLocalChange = { type: 'remove', amount: assistsToRemove };
+     const undoBtn = document.getElementById('undoButton');
+     if (undoBtn) undoBtn.disabled = false;
     input.value = '';
     return;
   }
@@ -727,6 +737,11 @@ async function reduceAssists() {
   try {
     isMutating = true;
     showLoading(true);
+
+     // Identify Braden before calling the API
+     const braden = players.find(p => p.isBraden);
+     if (!braden) throw new Error('Braden Smith not found');
+ 
     
     // Use the reduce-assists endpoint
     const res = await fetch(`${BASE_API_URL}/players/${braden.id}/reduce-assists`, {
@@ -765,7 +780,37 @@ async function reduceAssists() {
 
 // Undo the last assist update via API (delete last assist log)
 async function undoLastUpdate() {
-  if (!lastAssistLogId) return;
+  // If we're in demo mode or do not have a server-provided assist log id,
+  // perform a client-side undo of the last local change.
+  if (!BASE_API_URL || window.location.hostname.includes('vercel.app') || errorCount >= MAX_ERROR_COUNT || !lastAssistLogId) {
+    if (!lastLocalChange) {
+      showError('Nothing to undo yet. Make an update first.');
+      return;
+    }
+
+    const braden = players.find(p => p.isBraden);
+    if (!braden) {
+      showError('Braden Smith not found');
+      return;
+    }
+
+    if (lastLocalChange.type === 'add') {
+      braden.assists = Math.max(0, braden.assists - lastLocalChange.amount);
+    } else if (lastLocalChange.type === 'remove') {
+      braden.assists += lastLocalChange.amount;
+    }
+
+    players.sort((a, b) => b.assists - a.assists);
+    renderPlayerMarkers();
+    renderLeaderboard();
+    updateProgressBar();
+    showSuccessMessage('Last update undone.');
+
+    lastLocalChange = null;
+    const undoBtn = document.getElementById('undoButton');
+    if (undoBtn) undoBtn.disabled = true;
+    return;
+  }
   
   try {
     isMutating = true;
