@@ -85,15 +85,7 @@ async function bootstrapUI() {
    // Initialize chart when canvas is present
    initTrendChart();
 
-   // Copy embed snippet
-   const copyBtn = document.getElementById('copyEmbed');
-   if (copyBtn) {
-     copyBtn.addEventListener('click', () => {
-      const origin = window.location.origin || '';
-      const code = `<iframe src="${origin}/index.html?embed=1" width="100%" height="420" style="border:0;border-radius:12px;"></iframe>`;
-       navigator.clipboard.writeText(code).then(() => showSuccessMessage('Embed code copied!'));
-     });
-   }
+   // NOTE: embed copy button handler removed (embed CTA & button were deleted from index.html)
 }
 
 // Enhanced theme initialization
@@ -742,7 +734,7 @@ async function reduceAssists() {
      const braden = players.find(p => p.isBraden);
      if (!braden) throw new Error('Braden Smith not found');
  
-    
+     
     // Use the reduce-assists endpoint
     const res = await fetch(`${BASE_API_URL}/players/${braden.id}/reduce-assists`, {
       method: 'POST',
