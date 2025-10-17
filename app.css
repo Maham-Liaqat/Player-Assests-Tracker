@@ -89,6 +89,36 @@ body {
     border-bottom: 3px solid var(--purdue-black);
 }
 
+/* Header and hero */
+.site-header {
+    max-width: 1200px;
+    margin: 0 auto 12px auto;
+    background: var(--surface);
+    border-radius: 12px;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.08);
+}
+.site-header .nav-link { color: var(--text); text-decoration: none; }
+.site-header .nav-link:hover { text-decoration: underline; }
+.brand-mark {
+    width: 32px; height: 32px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--purdue-gold), #e6b450);
+    color: var(--purdue-black); display: grid; place-items: center; font-weight: 800;
+}
+
+.hero { max-width: 1200px; margin: 0 auto 24px; border-radius: 16px; overflow: hidden; }
+.hero-copy {
+    position: absolute; left: 24px; top: 24px; color: #fff; max-width: 560px;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.6);
+}
+.hero-title { font-size: 2.25rem; font-weight: 800; letter-spacing: 0.3px; }
+.hero-subtitle { opacity: 0.9; }
+.hero-highlight { position: absolute; right: 24px; bottom: 24px; width: 340px; }
+
+.chart-card { background: var(--surface); border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+.embed-cta { background: var(--surface); }
+.embed-snippet { background: #0b0d10; color: #e9ecef; padding: 12px 16px; border-radius: 8px; overflow: auto; }
+
+
 .court-svg {
     position: absolute;
     top: 0;
@@ -671,6 +701,9 @@ body {
     .court-background {
         height: 280px;
     }
+    .hero-copy{ left: 16px; right: 16px; }
+    .hero-title{ font-size: 1.6rem; }
+    .hero-highlight{ position: static; width: auto; margin: 12px; }
     
     .player-marker {
         width: 36px;
@@ -695,7 +728,7 @@ body {
 }
 
 /* Embed mode enhancements */
-.embed .widget-header { display: none; }
+.embed .widget-header, .embed .site-header, .embed .embed-cta { display: none; }
 .embed .stats-container { padding: 16px; }
 .embed .player-card { padding: 14px; }
 .embed .court-background { height: 280px; }
