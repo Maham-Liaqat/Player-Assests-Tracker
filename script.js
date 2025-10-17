@@ -80,6 +80,18 @@ async function bootstrapUI() {
   }
 
   console.log('✅ Auto-refresh disabled. Leaderboard updates only on assist changes.');
+
+   // Initialize chart when canvas is present
+   initTrendChart();
+
+   // Copy embed snippet
+   const copyBtn = document.getElementById('copyEmbed');
+   if (copyBtn) {
+     copyBtn.addEventListener('click', () => {
+       const code = '<iframe src="https://your-domain.example/index.html?embed=1" width="100%" height="420" style="border:0;border-radius:12px;"></iframe>';
+       navigator.clipboard.writeText(code).then(() => showSuccessMessage('Embed code copied!'));
+     });
+   }
 }
 
 // Enhanced theme initialization
@@ -400,6 +412,44 @@ function updateProgressBar() {
   }
 }
 
+// Trend chart (simple rolling cumulative illustration)
+let trendChart;
+function initTrendChart() {
+  const canvas = document.getElementById('assistTrendChart');
+  if (!canvas || typeof Chart === 'undefined') return;
+
+  // Generate mock monthly labels and values based on current Braden assists
+  const braden = players.find(p => p.isBraden) || { assists: 758 };
+  const months = ['Nov', 'Dec', 'Jan', 'Feb', 'Mar', 'Apr'];
+  const step = Math.max(Math.floor(braden.assists / months.length) - 40, 80);
+  const values = months.map((_, i) => Math.max(0, Math.min(braden.assists, (i + 1) * step)));
+
+  const data = {
+    labels: months,
+    datasets: [{
+      label: 'Cumulative Assists',
+      data: values,
+      borderColor: '#CEB888',
+      backgroundColor: 'rgba(206,184,136,0.15)',
+      fill: true,
+      tension: 0.35,
+      pointRadius: 3
+    }]
+  };
+
+  const options = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: {
+      x: { grid: { display: false } },
+      y: { grid: { color: 'rgba(0,0,0,0.06)' } }
+    }
+  };
+
+  trendChart = new Chart(canvas.getContext('2d'), { type: 'line', data, options });
+}
+
 // Animate numeric values
 function animateValue(element, start, end, duration) {
   const startTime = performance.now();
@@ -590,6 +640,10 @@ async function addAssists() {
   try {
     isMutating = true;
     showLoading(true);
+
+    const braden = players.find(p => p.isBraden);
+    if (!braden) throw new Error('Braden Smith not found');
+    
     const res = await fetch(`${BASE_API_URL}/players/${braden.id}/add-assists`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
